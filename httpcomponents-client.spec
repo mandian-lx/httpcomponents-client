@@ -1,7 +1,7 @@
 Name:              httpcomponents-client
 Summary:           HTTP agent implementation based on httpcomponents HttpCore
 Version:           4.0.3
-Release:           3
+Release:           5
 Group:             Development/Java
 License:           ASL 2.0
 URL:               http://hc.apache.org/
