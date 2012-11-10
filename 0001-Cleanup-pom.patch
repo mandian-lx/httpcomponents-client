@@ -1,0 +1,95 @@
+From 00e8bdbfe680691c28ab6da5a40ca4ff020d5837 Mon Sep 17 00:00:00 2001
+From: Stanislav Ochotnicky <sochotnicky@redhat.com>
+Date: Mon, 20 Dec 2010 15:56:06 +0100
+Subject: [PATCH] Cleanup pom
+
+---
+ pom.xml |   72 ---------------------------------------------------------------
+ 1 files changed, 0 insertions(+), 72 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index 3d0d20a..fce1fdd 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -144,78 +144,6 @@
+           </tasks>
+         </configuration>
+       </plugin>
+-      <plugin>
+-        <groupId>com.atlassian.maven.plugins</groupId>
+-        <artifactId>maven-clover2-plugin</artifactId>
+-        <configuration>
+-          <flushPolicy>threaded</flushPolicy>
+-          <flushInterval>100</flushInterval>
+-          <targetPercentage>50%</targetPercentage>
+-        </configuration>
+-        <executions>
+-          <execution>
+-            <id>site</id>
+-            <phase>pre-site</phase>
+-            <goals>
+-              <goal>instrument</goal>
+-              <goal>aggregate</goal>
+-              <goal>save-history</goal>
+-            </goals>
+-          </execution>
+-        </executions>
+-      </plugin>
+-      <plugin>
+-        <groupId>com.agilejava.docbkx</groupId>
+-        <artifactId>docbkx-maven-plugin</artifactId>
+-        <executions>
+-          <execution>
+-            <goals>
+-                <goal>generate-html</goal>
+-                <goal>generate-pdf</goal>
+-            </goals>
+-            <phase>pre-site</phase>
+-          </execution>
+-        </executions>
+-        <dependencies>
+-          <dependency>
+-            <groupId>org.docbook</groupId>
+-            <artifactId>docbook-xml</artifactId>
+-            <version>4.4</version>
+-            <scope>runtime</scope>
+-          </dependency>
+-        </dependencies>
+-        <configuration>
+-          <includes>index.xml</includes>
+-          <chunkedOutput>true</chunkedOutput>
+-          <xincludeSupported>true</xincludeSupported>
+-          <foCustomization>src/docbkx/resources/xsl/fopdf.xsl</foCustomization>
+-          <htmlCustomization>src/docbkx/resources/xsl/html_chunk.xsl</htmlCustomization>
+-          <htmlStylesheet>css/hc-tutorial.css</htmlStylesheet>
+-          <entities>
+-            <entity>
+-              <name>version</name>
+-              <value>${pom.version}</value>
+-            </entity>
+-          </entities>
+-          <postProcess>
+-            <copy todir="target/site/tutorial">
+-              <fileset dir="target/docbkx">
+-                <include name="**/*.html" />
+-                <include name="**/*.pdf" />
+-              </fileset>
+-            </copy>
+-            <copy todir="target/site/tutorial/html">
+-              <fileset dir="src/docbkx/resources">
+-                <include name="**/*.css" />
+-                <include name="**/*.png" />
+-                <include name="**/*.gif" />
+-                <include name="**/*.jpg" />
+-              </fileset>
+-            </copy>
+-            <move file="target/site/tutorial/pdf/index.pdf" tofile="target/site/tutorial/pdf/httpclient-tutorial.pdf" failonerror="false" />
+-          </postProcess>
+-        </configuration>
+-      </plugin>
+ 
+     </plugins>
+   </build>
+-- 
+1.7.3.3
+
