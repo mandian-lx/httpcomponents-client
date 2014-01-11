@@ -1,27 +1,27 @@
+%{?_javapackages_macros:%_javapackages_macros}
+%global base_name httpcomponents
+
 Name:              httpcomponents-client
 Summary:           HTTP agent implementation based on httpcomponents HttpCore
-Version:           4.0.3
-Release:           5
-Group:             Development/Java
+Version:           4.2.5
+Release:           3.1%{?dist}
+
 License:           ASL 2.0
 URL:               http://hc.apache.org/
-Source0:           http://www.apache.org/dist/httpcomponents/httpclient/source/httpcomponents-client-%{version}-src.tar.gz
-# Remove optional build deps not available in Fedora
-Patch0:            0001-Cleanup-pom.patch
+Source0:           http://archive.apache.org/dist/httpcomponents/httpclient/source/%{name}-%{version}-src.tar.gz
 
 BuildArch:         noarch
 
-
-BuildRequires:     httpcomponents-project
-BuildRequires:     httpcomponents-core
-
-
-Requires:          java >= 0:1.6.0
-Requires:          jpackage-utils
-Requires:          httpcomponents-core
-
-Requires(post):    jpackage-utils
-Requires(postun):  jpackage-utils
+BuildRequires:     maven-local
+BuildRequires:     mvn(commons-codec:commons-codec)
+BuildRequires:     mvn(commons-logging:commons-logging)
+BuildRequires:     mvn(org.apache.httpcomponents:httpcore)
+BuildRequires:     mvn(org.apache.httpcomponents:project)
+%if 0%{?fedora}
+# Test dependencies
+BuildRequires:     mvn(org.mockito:mockito-core)
+BuildRequires:     mvn(junit:junit)
+%endif
 
 %description
 HttpClient is a HTTP/1.1 compliant HTTP agent implementation based on
@@ -33,8 +33,7 @@ encouraged to upgrade.
 
 %package        javadoc
 Summary:        API documentation for %{name}
-Group:          Development/Java
-Requires:       jpackage-utils
+
 
 %description    javadoc
 %{summary}.
@@ -42,54 +41,185 @@ Requires:       jpackage-utils
 
 %prep
 %setup -q
-%patch0 -p1
+
+# Remove optional build deps not available in Fedora
+%pom_disable_module httpclient-cache
+%pom_disable_module httpclient-osgi
+%pom_disable_module fluent-hc
+%pom_remove_plugin :maven-notice-plugin
+%pom_remove_plugin :docbkx-maven-plugin
+%pom_remove_plugin :clirr-maven-plugin
+%pom_remove_plugin :maven-clover2-plugin httpclient
+%if !0%{?fedora}
+%pom_remove_dep :mockito-core httpclient
+%endif
+
+# Add proper Apache felix bundle plugin instructions
+# so that we get a reasonable OSGi manifest.
+for module in httpclient httpmime; do
+    %pom_xpath_remove "pom:project/pom:packaging" $module
+    %pom_xpath_inject "pom:project" "<packaging>bundle</packaging>" $module
+done
+
+# Make httpmime into bundle
+%pom_xpath_inject pom:build/pom:plugins "
+    <plugin>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>maven-bundle-plugin</artifactId>
+      <extensions>true</extensions>
+    </plugin>" httpmime
+
+# Make httpclient into bundle
+%pom_xpath_inject pom:reporting/pom:plugins "
+    <plugin>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>maven-bundle-plugin</artifactId>
+      <configuration>
+        <instructions>
+          <Export-Package>*</Export-Package>
+          <Private-Package></Private-Package>
+          <Import-Package>!org.apache.avalon.framework.logger,!org.apache.log,!org.apache.log4j,*</Import-Package>
+        </instructions>
+      </configuration>
+    </plugin>" httpclient
+%pom_xpath_inject pom:build/pom:plugins "
+    <plugin>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>maven-bundle-plugin</artifactId>
+      <extensions>true</extensions>
+      <configuration>
+        <instructions>
+          <Export-Package>org.apache.http.*,!org.apache.http.param</Export-Package>
+          <Private-Package></Private-Package>
+          <_nouses>true</_nouses>
+          <Import-Package>!org.apache.avalon.framework.logger,!org.apache.log,!org.apache.log4j,*</Import-Package>
+        </instructions>
+        <excludeDependencies>true</excludeDependencies>
+      </configuration>
+    </plugin>" httpclient
+
+
 
 %build
-# skip httpmime, httpclient only. For httpmime we need org.apache.james:apache-mime4j
-cd httpclient
-export maven_repo_local=$(pwd)/.m2/repository
-install -d $maven_repo_local
+%mvn_file ":{*}" httpcomponents/@1
 
-mvn-jpp -Dmaven.repo.local=$maven_repo_local \
-        install javadoc:javadoc
+# Build with tests enabled on Fedora
+%if 0%{?fedora}
+%mvn_build
+%else
+%mvn_build -f
+%endif
 
 
 %install
-cd httpclient
-# jars
-install -D -m 0644 target/httpclient-%{version}.jar %{buildroot}%{_javadir}/%{name}/httpclient.jar
-
-# pom
-install -D -m 0644 pom.xml \
-    %{buildroot}/%{_mavenpomdir}/JPP.%{name}-httpclient.pom
-%add_to_maven_depmap org.apache.httpcomponents httpclient %{version} JPP/%{name} httpclient
-
-# main pom
-install -D -m 0644 ../pom.xml \
-    %{buildroot}/%{_mavenpomdir}/JPP.%{name}-httpcomponents-client.pom
-%add_to_maven_depmap org.apache.httpcomponents httpcomponents-client %{version} JPP/%{name} httpcomponents-client
-
-# javadocs
-install -dm 755 %{buildroot}%{_javadocdir}/%{name}
-cp -pr target/site/api*/* %{buildroot}%{_javadocdir}/%{name}
+%mvn_install
 
 
-%post
-%update_maven_depmap
+%files -f .mfiles
+%doc LICENSE.txt NOTICE.txt
+%doc README.txt RELEASE_NOTES.txt
 
-%postun
-%update_maven_depmap
+%files javadoc -f .mfiles-javadoc
+%doc LICENSE.txt NOTICE.txt
 
-%files
-%defattr(-,root,root,-)
-%doc README.txt LICENSE.txt RELEASE_NOTES.txt
-%{_mavendepmapfragdir}/%{name}
-%{_mavenpomdir}/JPP.%{name}*.pom
-%{_javadir}/%{name}
+%changelog
+* Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 4.2.5-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
 
-%files javadoc
-%defattr(-,root,root,-)
-%doc LICENSE.txt
-%doc %{_javadocdir}/*
+* Mon Jun 10 2013 Michal Srb <msrb@redhat.com> - 4.2.5-2
+- Enable tests on Fedora
 
+* Thu Apr 25 2013 Michal Srb <msrb@redhat.com> - 4.2.5-1
+- Update to upstream version 4.2.5
 
+* Thu Apr 11 2013 Michal Srb <msrb@redhat.com> - 4.2.4-1
+- Update to upstream version 4.2.4
+
+* Wed Feb 06 2013 Java SIG <java-devel@lists.fedoraproject.org> - 4.2.3-3
+- Update for https://fedoraproject.org/wiki/Fedora_19_Maven_Rebuild
+- Replace maven BuildRequires with maven-local
+
+* Fri Jan 25 2013 Michal Srb <msrb@redhat.com> - 4.2.3-2
+- Build with xmvn
+- Disable fluent-hc module
+
+* Thu Jan 24 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.2.3-1
+- Update to upstream version 4.2.3
+
+* Thu Oct 25 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.2.2-1
+- Update to upstream version 4.2.2
+
+* Wed Aug  1 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.2.1-3
+- Fix OSGi manifest in httpmime
+
+* Fri Jul 27 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.2.1-2
+- Install NOTICE.txt file
+- Fix javadir directory ownership
+- Fix directory permissions
+- Preserve timestamps
+- Replace add_to_maven_depmap with add_maven_depmap
+
+* Fri Jul 27 2012 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.2.1-1
+- Update to upstream version 4.2.1
+- Convert patches to POM macros
+
+* Thu Jul 19 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 4.1.3-4
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_18_Mass_Rebuild
+
+* Wed May 2 2012 Alexander Kurtakov <akurtako@redhat.com> 4.1.3-3
+- Do not export org.apache.http.param in osgi.
+
+* Mon Mar 26 2012 Alexander Kurtakov <akurtako@redhat.com> 4.1.3-2
+- Do not export * but only org.apache.http.* .
+- Do not generate uses clauses in the manifest.
+
+* Thu Mar  1 2012 Stanislav Ochotnicky <sochotnicky@redhat.com> 4.1.3-1
+- Update to latest upstream bugfix
+
+* Fri Jan 13 2012 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 4.1.2-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_17_Mass_Rebuild
+
+* Tue Aug 16 2011 Stanislav Ochotnicky <sochotnicky@redhat.com> - 4.1.2-1
+- Update to latest upstream (4.1.2)
+- Minor tweaks according to guidelines
+
+* Fri Jul 15 2011 Severin Gehwolf <sgehwolf@redhat.com> 4.1.1-3
+- Fix for RH Bz#718830. Add instructions so as to not
+  Import-Package optional dependencies.
+
+* Thu Apr 7 2011 Severin Gehwolf <sgehwolf@redhat.com> 4.1.1-2
+- Add BR/R apache-commons-codec, since httpcomponents-client's
+  MANIFEST.MF has an Import-Package: org.apache.commons.codec
+  header.
+
+* Tue Mar 29 2011 Stanislav Ochotnicky <sochotnicky@redhat.com> - 4.1.1-1
+- New upstream bugfix version (4.1.1)
+
+* Tue Mar 15 2011 Severin Gehwolf <sgehwolf@redhat.com> 4.1-6
+- Explicitly set PrivatePackage to the empty set, so as to
+  export all packages.
+
+* Thu Mar 10 2011 Alexander Kurtakov <akurtako@redhat.com> 4.1-5
+- OSGi export more packages.
+
+* Fri Feb 25 2011 Alexander Kurtakov <akurtako@redhat.com> 4.1-4
+- Build httpmime module.
+
+* Fri Feb 18 2011 Alexander Kurtakov <akurtako@redhat.com> 4.1-3
+- Don't use basename as an identifier.
+
+* Fri Feb 18 2011 Alexander Kurtakov <akurtako@redhat.com> 4.1-2
+- OSGify properly.
+- Install into %{_javadir}/%{basename}.
+
+* Thu Feb 17 2011 Alexander Kurtakov <akurtako@redhat.com> 4.1-1
+- Update to latest upstream version.
+
+* Wed Feb 09 2011 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 4.0.3-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_15_Mass_Rebuild
+
+* Wed Dec 22 2010 Stanislav Ochotnicky <sochotnicky@redhat.com> - 4.0.3-2
+- Added license to javadoc subpackage
+
+* Mon Dec 20 2010 Stanislav Ochotnicky <sochotnicky@redhat.com> - 4.0.3-1
+- Initial version
