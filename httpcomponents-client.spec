@@ -3,12 +3,11 @@
 
 Name:              httpcomponents-client
 Summary:           HTTP agent implementation based on httpcomponents HttpCore
-Version:           4.2.5
-Release:           3.1%{?dist}
-
+Version:           4.3.5
+Release:           1%{?dist}
 License:           ASL 2.0
 URL:               http://hc.apache.org/
-Source0:           http://archive.apache.org/dist/httpcomponents/httpclient/source/%{name}-%{version}-src.tar.gz
+Source0:           http://www.apache.org/dist/httpcomponents/httpclient/source/%{name}-%{version}-src.tar.gz
 
 BuildArch:         noarch
 
@@ -16,12 +15,8 @@ BuildRequires:     maven-local
 BuildRequires:     mvn(commons-codec:commons-codec)
 BuildRequires:     mvn(commons-logging:commons-logging)
 BuildRequires:     mvn(org.apache.httpcomponents:httpcore)
-BuildRequires:     mvn(org.apache.httpcomponents:project)
-%if 0%{?fedora}
-# Test dependencies
-BuildRequires:     mvn(org.mockito:mockito-core)
-BuildRequires:     mvn(junit:junit)
-%endif
+BuildRequires:     mvn(org.apache.httpcomponents:project:pom:)
+BuildRequires:     mvn(org.codehaus.mojo:build-helper-maven-plugin)
 
 %description
 HttpClient is a HTTP/1.1 compliant HTTP agent implementation based on
@@ -34,7 +29,6 @@ encouraged to upgrade.
 %package        javadoc
 Summary:        API documentation for %{name}
 
-
 %description    javadoc
 %{summary}.
 
@@ -42,17 +36,17 @@ Summary:        API documentation for %{name}
 %prep
 %setup -q
 
+# Don't install javadoc, sources and tests jars
+%mvn_package ":{*}::{tests,sources,javadoc}:" __noinstall
+
 # Remove optional build deps not available in Fedora
 %pom_disable_module httpclient-cache
 %pom_disable_module httpclient-osgi
 %pom_disable_module fluent-hc
-%pom_remove_plugin :maven-notice-plugin
 %pom_remove_plugin :docbkx-maven-plugin
 %pom_remove_plugin :clirr-maven-plugin
-%pom_remove_plugin :maven-clover2-plugin httpclient
-%if !0%{?fedora}
+%pom_remove_plugin :maven-checkstyle-plugin
 %pom_remove_dep :mockito-core httpclient
-%endif
 
 # Add proper Apache felix bundle plugin instructions
 # so that we get a reasonable OSGi manifest.
@@ -103,26 +97,46 @@ done
 %build
 %mvn_file ":{*}" httpcomponents/@1
 
-# Build with tests enabled on Fedora
-%if 0%{?fedora}
-%mvn_build
-%else
+# tests are disabled due to bug in mockito (rhbz#1040350)
 %mvn_build -f
-%endif
-
 
 %install
 %mvn_install
 
 
 %files -f .mfiles
-%doc LICENSE.txt NOTICE.txt
-%doc README.txt RELEASE_NOTES.txt
+%doc LICENSE.txt NOTICE.txt README.txt RELEASE_NOTES.txt
 
 %files javadoc -f .mfiles-javadoc
 %doc LICENSE.txt NOTICE.txt
 
 %changelog
+* Tue Aug  5 2014 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.3.5-1
+- Update to upstream version 4.3.5
+
+* Mon Aug  4 2014 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.3.4-2
+- Fix build-requires on httpcomponents-project
+
+* Fri Jun  6 2014 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.3.4-1
+- Update to upstream version 4.3.4
+
+* Fri Feb 28 2014 Michael Simacek <msimacek@redhat.com> - 4.3.3-1
+- Update to upstream version 4.3.3
+
+* Mon Jan 20 2014 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.3.2-1
+- Update to upstream version 4.3.2
+
+* Mon Jan 06 2014 Michael Simacek <msimacek@redhat.com> - 4.3.1-1
+- Update to upstream version 4.3.1
+- Temporarily disable tests due to bug in mockito
+
+* Thu Oct  3 2013 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.3-2
+- Don't try to remove maven-notice-plugin from POM
+
+* Fri Sep 13 2013 Michal Srb <msrb@redhat.com> - 4.3-1
+- Update to upstream version 4.3
+- Drop group tag
+
 * Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 4.2.5-3
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
 
@@ -223,3 +237,4 @@ done
 
 * Mon Dec 20 2010 Stanislav Ochotnicky <sochotnicky@redhat.com> - 4.0.3-1
 - Initial version
+
