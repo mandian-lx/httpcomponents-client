@@ -1,22 +1,29 @@
-%{?_javapackages_macros:%_javapackages_macros}
-%global base_name httpcomponents
+%define bname httpcomponents
+%define module client
 
-Name:              httpcomponents-client
-Summary:           HTTP agent implementation based on httpcomponents HttpCore
-Version:           4.3.5
-Release:           1%{?dist}
-License:           ASL 2.0
-URL:               http://hc.apache.org/
-Source0:           http://www.apache.org/dist/httpcomponents/httpclient/source/%{name}-%{version}-src.tar.gz
+Summary:	HTTP agent implementation based on httpcomponents HttpCore
+Name:		%{bname}-%{module}
+Version:	4.5.2
+Release:	1
+License:	ASL 2.0
+Group:		Development/Java
+URL:		https://hc.apache.org/
+Source0:	https://www.apache.org/dist/%{bname}/http%{module}/source/%{name}-%{version}-src.tar.gz
+Patch0:		0001-Use-system-copy-of-effective_tld_names.dat.patch
+BuildArch:	noarch
 
-BuildArch:         noarch
+BuildRequires:	maven-local
+BuildRequires:	mvn(commons-codec:commons-codec)
+BuildRequires:	mvn(commons-logging:commons-logging)
+BuildRequires:	httpcomponents-core #mvn(org.apache.httpcomponents:httpcore)
+BuildRequires:	httpcomponents-project #mvn(org.apache.httpcomponents:project:pom:)
+BuildRequires:	mvn(org.codehaus.mojo:build-helper-maven-plugin)
+BuildRequires:	mvn(org.mockito:mockito-core)
+BuildRequires:	mvn(net.sf.ehcache:ehcache-core)
+BuildRequires:	spymemcached #mvn(spy:spymemcached)
+BuildRequires:	publicsuffix-list
 
-BuildRequires:     maven-local
-BuildRequires:     mvn(commons-codec:commons-codec)
-BuildRequires:     mvn(commons-logging:commons-logging)
-BuildRequires:     mvn(org.apache.httpcomponents:httpcore)
-BuildRequires:     mvn(org.apache.httpcomponents:project:pom:)
-BuildRequires:     mvn(org.codehaus.mojo:build-helper-maven-plugin)
+Requires:	publicsuffix-list
 
 %description
 HttpClient is a HTTP/1.1 compliant HTTP agent implementation based on
@@ -26,34 +33,81 @@ management. HttpComponents Client is a successor of and replacement
 for Commons HttpClient 3.x. Users of Commons HttpClient are strongly
 encouraged to upgrade.
 
-%package        javadoc
-Summary:        API documentation for %{name}
+%files -f .mfiles
+%doc README.txt
+%doc RELEASE_NOTES.txt
+%doc NOTICE.txt
+%doc LICENSE.txt
 
-%description    javadoc
-%{summary}.
+#----------------------------------------------------------------------------
 
+%package        cache
+Summary:        Cache module for %{name}
+
+%description    cache
+This package provides client side caching for %{name}.
+
+%files cache -f .mfiles-cache
+%doc NOTICE.txt
+%doc LICENSE.txt
+
+#----------------------------------------------------------------------------
+
+%package javadoc
+Summary:	Javadoc for %{name}
+
+%description javadoc
+API documentation for %{name}.
+
+%files javadoc -f .mfiles-javadoc
+%doc NOTICE.txt
+%doc LICENSE.txt
+
+#----------------------------------------------------------------------------
 
 %prep
-%setup -q
+%setup -q -n %{name}-%{version}
+%patch0 -p1
 
-# Don't install javadoc, sources and tests jars
-%mvn_package ":{*}::{tests,sources,javadoc}:" __noinstall
+# Don't install javadoc and sources jars
+%mvn_package ":{*}::{sources,javadoc}:" __noinstall
+
+%mvn_package :httpclient-cache cache
 
 # Remove optional build deps not available in Fedora
-%pom_disable_module httpclient-cache
 %pom_disable_module httpclient-osgi
-%pom_disable_module fluent-hc
+%pom_disable_module httpclient-win
 %pom_remove_plugin :docbkx-maven-plugin
 %pom_remove_plugin :clirr-maven-plugin
 %pom_remove_plugin :maven-checkstyle-plugin
-%pom_remove_dep :mockito-core httpclient
+%pom_remove_plugin :apache-rat-plugin
+
+# Don't compile/run httpclient-cache tests - they are incompatible with EasyMock 3.3
+%pom_remove_plugin org.apache.maven.plugins:maven-jar-plugin httpclient-cache
+%pom_remove_dep org.easymock:easymockclassextension
+for dep in org.easymock:easymockclassextension org.slf4j:slf4j-jcl; do
+    %pom_remove_dep $dep httpclient-cache
+done
+rm -rf httpclient-cache/src/test
+
+%pom_remove_plugin :download-maven-plugin httpclient
 
 # Add proper Apache felix bundle plugin instructions
 # so that we get a reasonable OSGi manifest.
-for module in httpclient httpmime; do
+for module in httpclient httpmime httpclient-cache fluent-hc; do
     %pom_xpath_remove "pom:project/pom:packaging" $module
     %pom_xpath_inject "pom:project" "<packaging>bundle</packaging>" $module
 done
+
+# Make fluent-hc into bundle
+%pom_xpath_inject pom:build "
+<plugins>
+    <plugin>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>maven-bundle-plugin</artifactId>
+      <extensions>true</extensions>
+    </plugin>
+</plugins>" fluent-hc
 
 # Make httpmime into bundle
 %pom_xpath_inject pom:build/pom:plugins "
@@ -92,25 +146,82 @@ done
       </configuration>
     </plugin>" httpclient
 
+# Make httpclient-cache into bundle
+%pom_xpath_inject pom:build/pom:plugins "
+    <plugin>
+      <groupId>org.apache.felix</groupId>
+      <artifactId>maven-bundle-plugin</artifactId>
+      <extensions>true</extensions>
+      <configuration>
+        <instructions>
+          <Export-Package>*</Export-Package>
+          <Import-Package>net.sf.ehcache;resolution:=optional,net.spy.memcached;resolution:=optional,*</Import-Package>
+          <Private-Package></Private-Package>
+          <_nouses>true</_nouses>
+        </instructions>
+        <excludeDependencies>true</excludeDependencies>
+      </configuration>
+    </plugin>" httpclient-cache
 
+# requires network
+rm httpclient/src/test/java/org/apache/http/client/config/TestRequestConfig.java
 
 %build
 %mvn_file ":{*}" httpcomponents/@1
 
-# tests are disabled due to bug in mockito (rhbz#1040350)
-%mvn_build -f
+%mvn_build
 
 %install
 %mvn_install
 
-
-%files -f .mfiles
-%doc LICENSE.txt NOTICE.txt README.txt RELEASE_NOTES.txt
-
-%files javadoc -f .mfiles-javadoc
-%doc LICENSE.txt NOTICE.txt
-
 %changelog
+* Wed Mar 16 2016 Sopot Cela <scela@redhat.com> - 4.5.2-2
+- Make the fluent API into a bundle
+
+* Mon Feb 29 2016 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.5.2-1
+- Update to upstream version 4.5.2
+
+* Wed Feb 10 2016 Mat Booth <mat.booth@redhat.com> - 4.5.1-4
+- Enable the fluent API module
+
+* Wed Feb 03 2016 Fedora Release Engineering <releng@fedoraproject.org> - 4.5.1-3
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_24_Mass_Rebuild
+
+* Mon Jan 25 2016 Mat Booth <mat.booth@redhat.com> - 4.5.1-2
+- Make client cache jar into a OSGi bundle
+
+* Wed Sep 16 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.5.1-1
+- Update to upstream version 4.5.1
+
+* Wed Jun 17 2015 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 4.5-2
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_23_Mass_Rebuild
+
+* Thu Jun 04 2015 Michael Simacek <msimacek@redhat.com> - 4.5-1
+- Update to upstream version 4.5
+
+* Tue Mar 31 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.4.1-1
+- Update to upstream version 4.4.1
+
+* Wed Feb 18 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.4-1
+- Update to upstream version 4.4
+
+* Thu Jan 22 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.4-0.3.beta1
+- Split httpclient-cache into subpackage
+
+* Tue Jan 20 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.4-0.2.beta1
+- Unbundle publicsuffix-list
+- Resolves: rhbz#1183782
+
+* Mon Jan 19 2015 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.4-0.1.beta1
+- Update to upstream version 4.4 beta1
+- Remove tests subpackage
+
+* Fri Jan  9 2015 Richard Fearn <richardfearn@gmail.com> - 4.3.5-3
+- Also build HttpClient Cache (bug #1180696)
+
+* Tue Dec 02 2014 Michael Simacek <msimacek@redhat.com> - 4.3.5-2
+- Build and install tests artifact (needed by copr-java)
+
 * Tue Aug  5 2014 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.3.5-1
 - Update to upstream version 4.3.5
 
@@ -237,4 +348,3 @@ done
 
 * Mon Dec 20 2010 Stanislav Ochotnicky <sochotnicky@redhat.com> - 4.0.3-1
 - Initial version
-
