@@ -10,18 +10,24 @@ Group:		Development/Java
 URL:		https://hc.apache.org/
 Source0:	https://www.apache.org/dist/%{bname}/http%{module}/source/%{name}-%{version}-src.tar.gz
 Patch0:		0001-Use-system-copy-of-effective_tld_names.dat.patch
+# Some compile-time only annotations were removed from httpcore
+Patch1:		0002-Remove-missing-compile-time-annotations.patch
 BuildArch:	noarch
 
 BuildRequires:	maven-local
 BuildRequires:	mvn(commons-codec:commons-codec)
 BuildRequires:	mvn(commons-logging:commons-logging)
-BuildRequires:	httpcomponents-core #mvn(org.apache.httpcomponents:httpcore)
-BuildRequires:	httpcomponents-project #mvn(org.apache.httpcomponents:project:pom:)
-BuildRequires:	mvn(org.codehaus.mojo:build-helper-maven-plugin)
-BuildRequires:	mvn(org.apache.maven.plugins:maven-site-plugin)
-BuildRequires:	mvn(org.mockito:mockito-core)
+BuildRequires:	mvn(junit:junit)
 BuildRequires:	mvn(net.sf.ehcache:ehcache-core)
 BuildRequires:	spymemcached #mvn(spy:spymemcached)
+BuildRequires:	mvn(org.apache.felix:maven-bundle-plugin)
+BuildRequires:	httpcomponents-core #mvn(org.apache.httpcomponents:httpcore)
+BuildRequires:	httpcomponents-project #mvn(org.apache.httpcomponents:project:pom:)
+BuildRequires:	mvn(org.apache.maven.plugins:maven-source-plugin)
+BuildRequires:	mvn(org.codehaus.mojo:build-helper-maven-plugin)
+BuildRequires:	mvn(org.easymock:easymock)
+BuildRequires:	mvn(org.mockito:mockito-core)
+BuildRequires:	mvn(net.sf.ehcache:ehcache-core)
 BuildRequires:	publicsuffix-list
 
 Requires:	publicsuffix-list
@@ -69,6 +75,7 @@ API documentation for %{name}.
 %prep
 %setup -q -n %{name}-%{version}
 %patch0 -p1
+%patch1 -p1
 
 # Don't install javadoc and sources jars
 %mvn_package ":{*}::{sources,javadoc}:" __noinstall
@@ -176,6 +183,12 @@ rm httpclient/src/test/java/org/apache/http/client/config/TestRequestConfig.java
 %mvn_install
 
 %changelog
+* Fri Jun 24 2016 Michael Simacek <msimacek@redhat.com> - 4.5.2-4
+- Fix build with httpcomponents-core-4.4.5
+
+* Wed Jun 15 2016 Mikolaj Izdebski <mizdebsk@redhat.com> - 4.5.2-3
+- Add missing build-requires
+
 * Wed Mar 16 2016 Sopot Cela <scela@redhat.com> - 4.5.2-2
 - Make the fluent API into a bundle
 
