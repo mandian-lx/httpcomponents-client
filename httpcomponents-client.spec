@@ -19,10 +19,10 @@ BuildRequires:	mvn(commons-codec:commons-codec)
 BuildRequires:	mvn(commons-logging:commons-logging)
 BuildRequires:	mvn(junit:junit)
 BuildRequires:	mvn(net.sf.ehcache:ehcache-core)
-BuildRequires:	spymemcached #mvn(spy:spymemcached)
+BuildRequires:	spymemcached
 BuildRequires:	mvn(org.apache.felix:maven-bundle-plugin)
-BuildRequires:	httpcomponents-core > 4.4.4 #mvn(org.apache.httpcomponents:httpcore)
-BuildRequires:	httpcomponents-project #mvn(org.apache.httpcomponents:project:pom:)
+BuildRequires:	httpcomponents-core > 4.4.4
+BuildRequires:	httpcomponents-project
 BuildRequires:	mvn(org.apache.maven.plugins:maven-site-plugin)
 BuildRequires:	mvn(org.apache.maven.plugins:maven-source-plugin)
 BuildRequires:	mvn(org.codehaus.mojo:build-helper-maven-plugin)
