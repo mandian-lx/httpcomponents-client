@@ -21,7 +21,7 @@ BuildRequires:	mvn(junit:junit)
 BuildRequires:	mvn(net.sf.ehcache:ehcache-core)
 BuildRequires:	spymemcached
 BuildRequires:	mvn(org.apache.felix:maven-bundle-plugin)
-BuildRequires:	httpcomponents-core > 4.4.4
+BuildRequires:	httpcomponents-core
 BuildRequires:	httpcomponents-project
 BuildRequires:	mvn(org.apache.maven.plugins:maven-site-plugin)
 BuildRequires:	mvn(org.apache.maven.plugins:maven-source-plugin)
