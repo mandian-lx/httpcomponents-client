@@ -16,22 +16,20 @@ Patch0:		0001-Use-system-copy-of-effective_tld_names.dat.patch
 Patch1:		0002-Remove-missing-compile-time-annotations.patch
 BuildArch:	noarch
 
-BuildRequires:	maven-local
-BuildRequires:	mvn(commons-codec:commons-codec)
-BuildRequires:	mvn(commons-logging:commons-logging)
-BuildRequires:	mvn(junit:junit)
-BuildRequires:	mvn(net.sf.ehcache:ehcache-core)
-BuildRequires:	spymemcached
-BuildRequires:	mvn(org.apache.felix:maven-bundle-plugin)
-BuildRequires:	httpcomponents-core
-BuildRequires:	httpcomponents-project
-BuildRequires:	mvn(org.apache.maven.plugins:maven-site-plugin)
-BuildRequires:	mvn(org.apache.maven.plugins:maven-source-plugin)
-BuildRequires:	mvn(org.codehaus.mojo:build-helper-maven-plugin)
-BuildRequires:	mvn(org.easymock:easymock)
-BuildRequires:	mvn(org.mockito:mockito-core)
-BuildRequires:	mvn(net.sf.ehcache:ehcache-core)
-BuildRequires:	publicsuffix-list
+BuildRequires:  maven-local
+BuildRequires:  mvn(commons-codec:commons-codec)
+BuildRequires:  mvn(commons-logging:commons-logging)
+BuildRequires:  mvn(junit:junit)
+BuildRequires:  mvn(net.sf.ehcache:ehcache-core)
+BuildRequires:  spymemcached #mvn(net.spy:spymemcached)
+BuildRequires:  mvn(org.apache.felix:maven-bundle-plugin)
+BuildRequires:  httpcomponents-core #mvn(org.apache.httpcomponents:httpcore)
+BuildRequires:  httpcomponents-project #mvn(org.apache.httpcomponents:project:pom:)
+BuildRequires:  mvn(org.apache.maven.plugins:maven-source-plugin)
+BuildRequires:  mvn(org.codehaus.mojo:build-helper-maven-plugin)
+BuildRequires:  mvn(org.easymock:easymock)
+BuildRequires:  mvn(org.mockito:mockito-core)
+BuildRequires:	mvn(org.springframework:spring-beans)
 
 Requires:	publicsuffix-list
 
