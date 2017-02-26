@@ -52,6 +52,7 @@ encouraged to upgrade.
 
 %package        cache
 Summary:        Cache module for %{name}
+Requires:       mvn(net.spy:spymemcached)
 
 %description    cache
 This package provides client side caching for %{name}.
@@ -59,8 +60,6 @@ This package provides client side caching for %{name}.
 %files cache -f .mfiles-cache
 %doc NOTICE.txt
 %doc LICENSE.txt
-
-Requires:  mvn(net.spy:spymemcached)
 
 #----------------------------------------------------------------------------
 
