@@ -60,6 +60,8 @@ This package provides client side caching for %{name}.
 %doc NOTICE.txt
 %doc LICENSE.txt
 
+Requires:  mvn(net.spy:spymemcached)
+
 #----------------------------------------------------------------------------
 
 %package javadoc
